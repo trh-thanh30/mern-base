@@ -7,7 +7,7 @@ const {
   postBlog,
 } = require("../controller/blog.controller");
 const router = express.Router();
-router.get("/api/blogs", verifyToken, getBlogs);
+router.get("/api/blogs", getBlogs);
 router.put("/api/updateBlog/:id", verifyToken, updateBlog);
 router.delete("/api/deleteBlog/:id", verifyToken, deleteBlog);
 router.post("/api/postBlog", verifyToken, postBlog);

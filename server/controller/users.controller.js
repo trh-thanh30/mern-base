@@ -53,6 +53,7 @@ const login = async (req, res) => {
         httpOnly: true,
       })
       .json({
+        token,
         message: "Login successfully",
         userId: user._id,
         userName: user.username,
