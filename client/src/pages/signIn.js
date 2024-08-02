@@ -26,6 +26,7 @@ export default function Signin() {
       if (res.ok) {
         window.localStorage.setItem("token", data.token);
         window.localStorage.setItem("userName", JSON.stringify(data.userName));
+        window.localStorage.setItem("userId", JSON.stringify(data.userId));
         navigate("/");
         alert(data.message);
       }
@@ -35,7 +36,7 @@ export default function Signin() {
   };
   return (
     <div>
-      <h1 className="text-center font-bold text-3xl mt-32">Sign In</h1>
+      <h1 className="mt-32 text-3xl font-bold text-center">Sign In</h1>
       {error && (
         <div
           id="toast-danger"
@@ -125,10 +126,10 @@ export default function Signin() {
         </button>
       </form>
       <div className="flex items-center justify-center gap-1 mt-2">
-        <p className="text-gray-800 font-semibold">
+        <p className="font-semibold text-gray-800">
           You don't have an account?
         </p>
-        <Link to="/register" className="text-blue-500 text-base">
+        <Link to="/register" className="text-base text-blue-500">
           register
         </Link>
       </div>

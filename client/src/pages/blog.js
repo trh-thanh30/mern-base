@@ -1,14 +1,15 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable jsx-a11y/anchor-is-valid */
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-
 export default function Blog() {
-  const [blogs, setBlogs] = useState({});
+  const [blogs, setBlogs] = useState([]);
   const [content, setContent] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [isEditing, setIsEditing] = useState(null);
+  const [offContent, setOffContent] = useState(false);
   const username = JSON.parse(window.localStorage.getItem("userName"));
+  const userId = JSON.parse(window.localStorage.getItem("userId"));
   const token = window.localStorage.getItem("token");
-  console.log(token);
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -29,6 +30,30 @@ export default function Blog() {
         setContent("");
         console.log(data.message);
         setBlogs([...blogs, data.blog]);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  const handleDelete = async (id) => {
+    try {
+      const res = await fetch(
+        `http://localhost:3001/blog/api/deleteBlog/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        console.log(data);
+      }
+      if (res.ok) {
+        setBlogs(blogs.filter((blog) => blog._id !== id));
+        console.log(data.message);
       }
     } catch (error) {
       console.log(error);
@@ -56,7 +81,48 @@ export default function Blog() {
     };
     fetchBlogs();
   }, []);
-  console.log(blogs);
+  const handleEditClick = (blog) => {
+    setIsEditing(blog._id);
+    setEditContent(blog.content);
+    setOffContent(true);
+  };
+  const handleEdit = async (id) => {
+    try {
+      const res = await fetch(
+        `http://localhost:3001/blog/api/updateBlog/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            content: editContent,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        console.log(data.message);
+      }
+      if (res.ok) {
+        setIsEditing(null);
+        setOffContent(false);
+        setBlogs(
+          blogs.map((blog) =>
+            blog._id === id ? { ...blog, content: editContent } : blog
+          )
+        );
+        console.log(data.message);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  const handleCancel = () => {
+    setIsEditing(null);
+    setOffContent(false);
+  };
   return (
     <>
       <section class="bg-white dark:bg-gray-900">
@@ -191,44 +257,43 @@ export default function Blog() {
             <h2 class="text-lg lg:text-2xl font-bold text-gray-900 dark:text-white">
               Discussion {blogs.length ? `(${blogs.length})` : "(0)"}
             </h2>
-            <p class="text-lg lg:text-2xl font-bold text-gray-900 dark:text-white">
-              {username ? (
-                `${username}`
-              ) : (
-                <div>
-                  Login to comment <Link to={"/login"}>login</Link>
-                </div>
-              )}
-            </p>
           </div>
           <form onSubmit={handleSubmit}>
             <div class="py-2 px-4 mb-4 bg-white rounded-lg rounded-t-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
               <label for="comment" class="sr-only">
                 Your comment
               </label>
-              <textarea
-                id="comment"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows="6"
-                class="px-0 w-full text-sm text-gray-900 border-0 focus:ring-0 focus:outline-none dark:text-white dark:placeholder-gray-400 dark:bg-gray-800"
-                placeholder="Write a comment..."
-                required
-              ></textarea>
+              {username ? (
+                <textarea
+                  id="comment"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  rows="6"
+                  class="px-0 w-full text-sm text-gray-900 border-0 focus:ring-0 focus:outline-none dark:text-white dark:placeholder-gray-400 dark:bg-gray-800"
+                  placeholder="Write a comment..."
+                  required
+                ></textarea>
+              ) : (
+                <p className="text-base text-gray-400">
+                  You must be sign in to comment
+                </p>
+              )}
             </div>
-            <button
-              type="submit"
-              class="inline-flex items-center py-2.5 px-4 text-xs font-medium text-center text-black bg-white"
-            >
-              Post comment
-            </button>
+            {username ? (
+              <button
+                type="submit"
+                class="inline-flex items-center py-2.5 px-4 text-xs font-medium text-center text-black bg-white"
+              >
+                Post comment
+              </button>
+            ) : null}
           </form>
           <div>
             {blogs.length < 0 && <p>No comments yet</p>}
             {blogs.length > 0 &&
               blogs.map((blog) => (
-                <div className="text-white mt-2 ">
-                  <div className="flex gap-5 items-center">
+                <div className="mt-2 text-white border-b-[1px] border-solid border-slate-400 py-2">
+                  <div className="flex items-center gap-5">
                     <span className="text-sm text-gray-400">
                       {blog.userName}
                     </span>
@@ -236,15 +301,53 @@ export default function Blog() {
                       {blog.createdAt}
                     </span>
                   </div>
-                  <p className="text-xl text-gray-300 my-1">{blog.content}</p>
-                  <div className="flex gap-5 items-center text-gray-400 text-sm">
-                    <span className="cursor-pointer hover:text-blue-500">
-                      Edit
-                    </span>
-                    <span className="cursor-pointer hover:text-red-500">
-                      Delete
-                    </span>
-                  </div>
+                  {isEditing === blog._id ? (
+                    <div className="mt-2">
+                      <textarea
+                        class="p-3 w-full text-sm text-gray-900 border-0 focus:ring-0 focus:outline-none dark:text-white dark:placeholder-gray-400 dark:bg-gray-800"
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                      ></textarea>
+                      <div className="flex items-center gap-4 mt-2">
+                        <button
+                          onClick={handleCancel}
+                          className="px-2 py-1 text-sm text-red-500 rounded-md bg-red-50"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleEdit(blog._id)}
+                          className="px-2 py-1 text-sm text-green-500 rounded-md bg-green-50"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="my-1 text-xl text-gray-300">{blog.content}</p>
+                  )}
+                  {blog.userId === userId && (
+                    <div
+                      className={`${
+                        offContent
+                          ? "hidden"
+                          : "flex items-center gap-5 text-sm text-gray-400"
+                      }`}
+                    >
+                      <span
+                        onClick={() => handleEditClick(blog)}
+                        className="cursor-pointer hover:text-blue-500"
+                      >
+                        Edit
+                      </span>
+                      <button
+                        onClick={() => handleDelete(blog._id)}
+                        className="cursor-pointer hover:text-red-500"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
           </div>
